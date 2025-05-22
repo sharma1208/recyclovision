@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 void main() {
   runApp(const MyApp());
@@ -28,7 +31,8 @@ class MyApp extends StatelessWidget {
         //
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+        useMaterial3: false,
       ),
       home: const MyHomePage(title: 'Flutter Demo Home Page'),
     );
@@ -55,6 +59,25 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
+  File? _image;
+
+  Future getImage() async {
+    final image = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (image == null) return;
+    final imageTemporary = File(image.path);
+
+    setState(() {
+      this._image = imageTemporary;
+    });
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            ScanPage(scannedItem: 'Plastic Bottle', imagePath: image.path),
+      ),
+    );
+  }
 
   void _incrementCounter() {
     setState(() {
@@ -64,6 +87,7 @@ class _MyHomePageState extends State<MyHomePage> {
       // _counter without calling setState(), then the build method would not be
       // called again, and so nothing would appear to happen.
       _counter++;
+      print("Button tapped! Counter is now $_counter");
     });
   }
 
@@ -80,7 +104,7 @@ class _MyHomePageState extends State<MyHomePage> {
         // TRY THIS: Try changing the color here to a specific color (to
         // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
         // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: Colors.amber,
         // Here we take the value from the MyHomePage object that was created by
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
@@ -109,6 +133,7 @@ class _MyHomePageState extends State<MyHomePage> {
               '$_counter',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
+            ElevatedButton(onPressed: getImage, child: Text("Scan")),
           ],
         ),
       ),
@@ -117,6 +142,55 @@ class _MyHomePageState extends State<MyHomePage> {
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ), // This trailing comma makes auto-formatting nicer for build methods.
+    );
+  }
+}
+
+class ScanPage extends StatelessWidget {
+  final String scannedItem;
+  final String imagePath;
+  const ScanPage({
+    super.key,
+    required this.scannedItem,
+    required this.imagePath,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    print('Selected image path: $imagePath');
+    return Scaffold(
+      appBar: AppBar(title: Text('Scan Results Page')),
+      body: Center(
+        child: Column(
+          children: [
+            Card(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    Text(
+                      'Scanned: $scannedItem',
+                      style: TextStyle(fontSize: 24.0),
+                    ),
+                    Text('Recyclability: Yes'),
+                    Text('Carbon Footprint: Low'),
+                    Text('Material: PET plastic'),
+                    kIsWeb
+                        ? Icon(Icons.image, size: 100, color: Colors.grey)
+                        : Image.file(File(imagePath)),
+                  ],
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Back to Home'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
