@@ -14,7 +14,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'RecycloVision',
       theme: ThemeData(
         // This is the theme of your application.
         //
@@ -34,7 +34,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
         useMaterial3: false,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'RecycloVision Scanner'),
     );
   }
 }
@@ -58,7 +58,6 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
   File? _image;
 
   Future getImage() async {
@@ -77,18 +76,6 @@ class _MyHomePageState extends State<MyHomePage> {
             ScanPage(scannedItem: 'Plastic Bottle', imagePath: image.path),
       ),
     );
-  }
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-      print("Button tapped! Counter is now $_counter");
-    });
   }
 
   @override
@@ -128,20 +115,10 @@ class _MyHomePageState extends State<MyHomePage> {
           // wireframe for each widget.
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
             ElevatedButton(onPressed: getImage, child: Text("Scan")),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
@@ -157,31 +134,93 @@ class ScanPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Map<String, dynamic> scanResult = {
+      'recyclable': true, // bool
+      'carbonScore': 'Medium', // String
+      'material': 'PET Plastic', // String
+    };
+
     print('Selected image path: $imagePath');
     return Scaffold(
       appBar: AppBar(title: Text('Scan Results Page')),
       body: Center(
         child: Column(
           children: [
-            Card(
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    Text(
-                      'Scanned: $scannedItem',
-                      style: TextStyle(fontSize: 24.0),
-                    ),
-                    Text('Recyclability: Yes'),
-                    Text('Carbon Footprint: Low'),
-                    Text('Material: PET plastic'),
-                    kIsWeb
-                        ? Icon(Icons.image, size: 100, color: Colors.grey)
-                        : Image.file(File(imagePath)),
-                  ],
+            SizedBox(height: 5),
+
+            Container(
+              margin: EdgeInsets.symmetric(horizontal: 24.0),
+              child: Card(
+                elevation: 2,
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // 🧾 Title
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12.0),
+                        child: Text(
+                          'Scanned: $scannedItem',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.only(bottom: 5.0),
+                        child: kIsWeb
+                            ? Icon(Icons.image, size: 100, color: Colors.grey)
+                            : Image.file(File(imagePath)),
+                      ),
+
+                      SizedBox(height: 16),
+                      Center(
+                        child: Text(
+                          "Environmental Impact:",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 8),
+
+                      Row(
+                        children: [
+                          Icon(Icons.check_circle, color: Colors.green),
+                          SizedBox(width: 8),
+                          Text(
+                            'Recyclable: ${scanResult['recyclable'] ? "Yes" : "No"}',
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.cloud, color: Colors.amber),
+                          SizedBox(width: 8),
+                          Text('Carbon Score: ${scanResult['carbonScore']}'),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.science, color: Colors.blue),
+                          SizedBox(width: 8),
+                          Text('Material: ${scanResult['material']}'),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
+
+            SizedBox(height: 16),
+
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
