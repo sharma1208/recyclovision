@@ -1,15 +1,12 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http; //lets us make http requests
+import 'dart:convert'; // lets us convert JSON strings into Dart maps
 
 class ScanPage extends StatefulWidget {
-  final String scannedItem;
   final String imagePath;
-  const ScanPage({
-    super.key,
-    required this.scannedItem,
-    required this.imagePath,
-  });
+  const ScanPage({super.key, required this.imagePath});
 
   @override
   State<ScanPage> createState() => _ScanPageState();
@@ -59,7 +56,7 @@ class _ScanPageState extends State<ScanPage> {
                             Padding(
                               padding: EdgeInsets.symmetric(vertical: 12.0),
                               child: Text(
-                                'Scanned: ${widget.scannedItem}',
+                                'Scanned: ${scanResult?['class_name'] ?? 'Unknown'}',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 26,
@@ -102,7 +99,9 @@ class _ScanPageState extends State<ScanPage> {
                               Icons.check_circle,
                               Colors.green,
                               'Recyclable',
-                              scanResult?['recyclable'] ? "Yes" : "No",
+                              (scanResult?['recyclable'] ?? false)
+                                  ? "Yes"
+                                  : "No",
                             ),
                             infoRow(
                               Icons.cloud,
@@ -151,21 +150,29 @@ class _ScanPageState extends State<ScanPage> {
 }
 
 Future<Map<String, dynamic>> classifyImage(String imagePath) async {
-  await Future.delayed(Duration(seconds: 2)); // Simulates processing time
-  print(imagePath);
-  if (imagePath.toLowerCase().contains('bottle')) {
-    return {
-      'recyclable': true,
-      'carbonScore': 'Low',
-      'material': 'HDPE Plastic',
-    };
-  } else if (imagePath.toLowerCase().contains('can')) {
-    return {
-      'recyclable': true,
-      'carbonScore': 'Medium',
-      'material': 'Aluminum',
-    };
+  // 1. Set URL to Flask server endpoint
+  final url = Uri.parse('http://192.168.1.30:5001/detect');
+  // 2. Create POST request w file attached
+  final request = http.MultipartRequest('POST', url);
+  request.files.add(await http.MultipartFile.fromPath('image', imagePath));
+
+  // 3. Send the request and wait for the response
+  final response = await request.send();
+
+  // 4. If it's successful (status 200), read and decode the response
+  if (response.statusCode == 200) {
+    final responseBody = await response.stream.bytesToString();
+    final parsed = json.decode(responseBody);
+    print('Server Response Parsed: $parsed');
+    return parsed;
   } else {
-    return {'recyclable': false, 'carbonScore': 'High', 'material': 'Unknown'};
+    // 5. Handle errors (like 500 or 404)
+    print("Failed with status code: ${response.statusCode}");
+    return {
+      'class_name': 'Error',
+      'recyclable': false,
+      'carbonScore': 'Error',
+      'material': 'Error',
+    };
   }
 }

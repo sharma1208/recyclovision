@@ -57,10 +57,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) =>
-            ScanPage(scannedItem: 'Plastic Bottle', imagePath: image.path),
-      ),
+      MaterialPageRoute(builder: (context) => ScanPage(imagePath: image.path)),
     );
   }
 
