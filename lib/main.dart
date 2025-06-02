@@ -3,8 +3,18 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:recyclovision/scan_page.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:hive/hive.dart';
+import 'models/scan_record.dart'; // your ScanRecord and ClassificationResult model files
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // make sure Flutter is ready
+  await Hive.initFlutter(); // initialize Hive for Flutter
+  // Register the adapters
+  Hive.registerAdapter(ScanRecordAdapter());
+  Hive.registerAdapter(ClassificationResultAdapter());
+  await Hive.openBox<ScanRecord>('scanRecords');
+
   runApp(const MyApp());
 }
 

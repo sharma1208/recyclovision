@@ -3,6 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http; //lets us make http requests
 import 'dart:convert'; // lets us convert JSON strings into Dart maps
+import 'package:hive/hive.dart';
+import 'package:path_provider/path_provider.dart';
+import '../models/scan_record.dart';
+import 'scan_historypage.dart';
 
 class ScanPage extends StatefulWidget {
   final String imagePath;
@@ -31,7 +35,7 @@ class _ScanPageState extends State<ScanPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Scan Results Page')),
-      body: Center(
+      body: SingleChildScrollView(
         child: isLoading
             ? CircularProgressIndicator() // show spinner while loading
             : scanResult == null
@@ -125,9 +129,14 @@ class _ScanPageState extends State<ScanPage> {
 
                   ElevatedButton(
                     onPressed: () {
-                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ScanHistoryPage(),
+                        ),
+                      );
                     },
-                    child: const Text('Back to Home'),
+                    child: const Text('Scan History'),
                   ),
                 ],
               ),
@@ -164,6 +173,25 @@ Future<Map<String, dynamic>> classifyImage(String imagePath) async {
     final responseBody = await response.stream.bytesToString();
     final parsed = json.decode(responseBody);
     print('Server Response Parsed: $parsed');
+
+    // Convert parsed map to ClassificationResult and ScanRecord
+    final classification = ClassificationResult(
+      className: parsed['class_name'],
+      recyclable: parsed['recyclable'],
+      material: parsed['material'],
+      carbonScore: parsed['carbonScore'],
+    );
+
+    final scanRecord = ScanRecord(
+      imagePath: imagePath,
+      classificationResult: classification,
+      timestamp: DateTime.now(),
+    );
+
+    // Save to Hive
+    final box = await Hive.openBox<ScanRecord>('scanRecords');
+    await box.add(scanRecord);
+
     return parsed;
   } else {
     // 5. Handle errors (like 500 or 404)
