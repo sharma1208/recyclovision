@@ -23,23 +23,41 @@ class ScanRecord {
 @HiveType(typeId: 1)
 class ClassificationResult {
   @HiveField(0)
-  final String className;
-
-  @HiveField(1)
   final String material;
 
-  @HiveField(2)
+  @HiveField(1)
   final bool recyclable;
 
-  @HiveField(3)
-  final String carbonScore;
+  @HiveField(2)
+  final String? recycledCarbonScore;
 
-  // You can add more fields here if you want to store confidence, bounding boxes, etc.
+  @HiveField(3)
+  final String? unrecycledCarbonScore;
+
+  @HiveField(4)
+  final String? carbonImpactRecycled;
+
+  @HiveField(5)
+  final String? carbonImpactUnrecycled;
+
+  @HiveField(6)
+  final double? recyclingrate;
+
+  @HiveField(7)
+  final bool hasSubtypes;
+
+  @HiveField(8)
+  final List<String> notes;
 
   ClassificationResult({
-    required this.className,
     required this.material,
     required this.recyclable,
-    required this.carbonScore,
+    this.recycledCarbonScore,
+    this.unrecycledCarbonScore,
+    this.carbonImpactRecycled,
+    this.carbonImpactUnrecycled,
+    this.recyclingrate,
+    required this.hasSubtypes,
+    required this.notes,
   });
 }

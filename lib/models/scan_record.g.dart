@@ -57,25 +57,40 @@ class ClassificationResultAdapter extends TypeAdapter<ClassificationResult> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return ClassificationResult(
-      className: fields[0] as String,
-      material: fields[1] as String,
-      recyclable: fields[2] as bool,
-      carbonScore: fields[3] as String,
+      material: fields[0] as String,
+      recyclable: fields[1] as bool,
+      recycledCarbonScore: fields[2] as String?,
+      unrecycledCarbonScore: fields[3] as String?,
+      carbonImpactRecycled: fields[4] as String?,
+      carbonImpactUnrecycled: fields[5] as String?,
+      recyclingrate: fields[6] as double?,
+      hasSubtypes: fields[7] as bool,
+      notes: (fields[8] as List).cast<String>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, ClassificationResult obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(9)
       ..writeByte(0)
-      ..write(obj.className)
-      ..writeByte(1)
       ..write(obj.material)
-      ..writeByte(2)
+      ..writeByte(1)
       ..write(obj.recyclable)
+      ..writeByte(2)
+      ..write(obj.recycledCarbonScore)
       ..writeByte(3)
-      ..write(obj.carbonScore);
+      ..write(obj.unrecycledCarbonScore)
+      ..writeByte(4)
+      ..write(obj.carbonImpactRecycled)
+      ..writeByte(5)
+      ..write(obj.carbonImpactUnrecycled)
+      ..writeByte(6)
+      ..write(obj.recyclingrate)
+      ..writeByte(7)
+      ..write(obj.hasSubtypes)
+      ..writeByte(8)
+      ..write(obj.notes);
   }
 
   @override

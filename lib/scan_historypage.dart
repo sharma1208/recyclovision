@@ -80,7 +80,7 @@ class ScanCard extends StatelessWidget {
       child: ListTile(
         // Title (e.g., scan name or material)
         title: Text(
-          scanRecord.classificationResult.className ?? 'Unknown Material',
+          scanRecord.classificationResult.material ?? 'Unknown Material',
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
 
@@ -118,15 +118,59 @@ class ScanCard extends StatelessWidget {
           // Prevents overflow
           child: ListBody(
             children: [
-              _buildDetailRow('📝 Class Name:', result.className),
-              _buildDetailRow('🔍 Material:', result.material),
+              _buildDetailRow('🔍 Material:', result.material ?? 'Unknown'),
               _buildDetailRow(
                 '♻️ Recyclable:',
                 result.recyclable ? 'Yes' : 'No',
               ),
-              _buildDetailRow('🌱 Carbon Score:', result.carbonScore),
+              _buildDetailRow(
+                '📈 Recycling Rate:',
+                result.recyclingrate != null
+                    ? '${result.recyclingrate!.toStringAsFixed(1)}%'
+                    : 'N/A',
+              ),
+              _buildDetailRow(
+                '🌿 Recycled Carbon Score:',
+                result.recycledCarbonScore ?? 'N/A',
+              ),
+              _buildDetailRow(
+                '🔥 Carbon Score (without recycling):',
+                result.unrecycledCarbonScore ?? 'N/A',
+              ),
+              _buildDetailRow(
+                '✅ Carbon Impact (Recycled):',
+                result.carbonImpactRecycled ?? 'N/A',
+              ),
+              _buildDetailRow(
+                '⚠️ Carbon Impact (Not recycled):',
+                result.carbonImpactUnrecycled ?? 'N/A',
+              ),
+              _buildDetailRow(
+                '🧩 Has Subtypes:',
+                result.hasSubtypes ? 'Yes' : 'No',
+              ),
               const SizedBox(height: 10),
               _buildDetailRow('📅 Timestamp:', scanRecord.timestamp.toString()),
+
+              if (result.notes != null && result.notes!.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                const Text(
+                  '📝 Notes:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                ...result.notes!.map(
+                  (note) => Padding(
+                    padding: const EdgeInsets.only(top: 4.0, left: 8.0),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text("• ", style: TextStyle(fontSize: 16)),
+                        Expanded(child: Text(note)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -148,7 +192,7 @@ class ScanCard extends StatelessWidget {
         children: [
           Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(width: 4),
-          Expanded(child: Text(value, softWrap: true)),
+          Expanded(child: Text(value ?? 'N/A', softWrap: true)),
         ],
       ),
     );

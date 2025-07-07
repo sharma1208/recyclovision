@@ -10,7 +10,6 @@ import 'models/scan_record.dart'; // your ScanRecord and ClassificationResult mo
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // make sure Flutter is ready
   await Hive.initFlutter(); // initialize Hive for Flutter
-  // Register the adapters
   Hive.registerAdapter(ScanRecordAdapter());
   Hive.registerAdapter(ClassificationResultAdapter());
   await Hive.openBox<ScanRecord>('scanRecords');
@@ -24,6 +23,7 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+    print("Building MyApp");
     return MaterialApp(
       title: 'RecycloVision',
       theme: ThemeData(
@@ -73,12 +73,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
     // The Flutter framework has been optimized to make rerunning build methods
     // fast, so that you can just rebuild anything that needs updating rather
     // than having to individually change instances of widgets.
+    print("Building MyHomePage");
+
     return Scaffold(
       appBar: AppBar(backgroundColor: Colors.green, title: Text(widget.title)),
       body: Center(

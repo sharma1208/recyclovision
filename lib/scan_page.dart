@@ -19,6 +19,21 @@ class ScanPage extends StatefulWidget {
 class _ScanPageState extends State<ScanPage> {
   Map<String, dynamic>? scanResult; // Nullable because it starts empty
   bool isLoading = true; // Track loading state
+  Map<String, List<String>> subtypeOptions = {
+    "plastic": ["HDPE", "PET", "PP", "LDPE", "LLDPE", "PS", "PVC"],
+    "metal": ["aluminum cans", "aluminum ingot", "steel cans", "copper wire"],
+    "paper": [
+      "magazines/third-class mail",
+      "newspaper",
+      "office paper",
+      "phone books",
+      "textbooks",
+      "mixed paper (general)",
+      "mixed paper (primarily residential)",
+      "mixed paper (primarily from offices)",
+    ],
+  };
+  String? selectedSubtype;
 
   @override
   void initState() {
@@ -29,6 +44,84 @@ class _ScanPageState extends State<ScanPage> {
         isLoading = false;
       });
     });
+  }
+
+  //Same logic as classifyimage, just now updating with subtypes based on drop
+  //down selections. Update Hive as well.
+  Future<void> submitSubtype(String material, String subtype) async {
+    print("📤 Submitting subtype: $subtype for material: $material");
+    final url = Uri.parse('http://192.168.1.21:5001/subtype');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: json.encode({"material": material, "subtype": subtype}),
+      );
+
+      print("📥 Subtype response status: ${response.statusCode}");
+      print("📄 Subtype response body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final parsed = json.decode(response.body);
+        print('Subtype Response Parsed: $parsed');
+
+        // Update the UI
+        setState(() {
+          scanResult = parsed;
+        });
+
+        // Update Hive (overwrite the most recent record)
+        final classification = ClassificationResult(
+          material: parsed['material'],
+          recyclable: parsed['recyclable'],
+          recycledCarbonScore: parsed['recycled_carbon_score'],
+          unrecycledCarbonScore: parsed['unrecycled_carbon_score'],
+          carbonImpactRecycled: parsed['carbon_impact_rating_recycled'],
+          carbonImpactUnrecycled: parsed['carbon_impact_rating_unrecycled'],
+          recyclingrate: parsed['recycling_rate_percent'],
+          hasSubtypes: parsed['has_subtypes'],
+          notes: List<String>.from(parsed['notes'] ?? []),
+        );
+
+        final box = await Hive.openBox<ScanRecord>('scanRecords');
+
+        // Get the latest record
+        final lastKey = box.keys.last;
+        final lastRecord = box.get(lastKey);
+
+        if (lastRecord != null) {
+          final updatedRecord = ScanRecord(
+            imagePath: lastRecord.imagePath,
+            classificationResult: classification,
+            timestamp: lastRecord.timestamp,
+          );
+
+          await box.put(lastKey, updatedRecord);
+          print('Hive record updated with subtype details.');
+        }
+      } else {
+        print("Subtype request failed: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Error in submitSubtype: $e");
+    }
+  }
+
+  Widget sectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          decoration: TextDecoration.underline,
+          decorationColor: Colors.green,
+          decorationThickness: 2,
+        ),
+      ),
+    );
   }
 
   @override
@@ -60,7 +153,7 @@ class _ScanPageState extends State<ScanPage> {
                             Padding(
                               padding: EdgeInsets.symmetric(vertical: 12.0),
                               child: Text(
-                                'Scanned: ${scanResult?['class_name'] ?? 'Unknown'}',
+                                'Scanned: ${scanResult?['material'] ?? 'Unknown'}',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 26,
@@ -82,23 +175,7 @@ class _ScanPageState extends State<ScanPage> {
                             ),
 
                             SizedBox(height: 16),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 16.0,
-                              ),
-                              child: Text(
-                                "Environmental Impact:",
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  decoration: TextDecoration.underline,
-                                  decorationColor: Colors.green,
-                                  decorationThickness: 2,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            // ✅ info rows using helper
+                            sectionHeader("♻️ Recycling Details:"),
                             infoRow(
                               Icons.check_circle,
                               Colors.green,
@@ -108,17 +185,77 @@ class _ScanPageState extends State<ScanPage> {
                                   : "No",
                             ),
                             infoRow(
+                              Icons.percent,
+                              Colors.deepPurple,
+                              'Recycling Rate',
+                              '${(scanResult?['recycling_rate_percent'] is double) ? (scanResult!['recycling_rate_percent'] as double).toStringAsFixed(1) : scanResult?['recycling_rate_percent'] ?? '--'}%',
+                            ),
+
+                            SizedBox(height: 16),
+
+                            sectionHeader("🌍 Carbon Impact:"),
+                            infoRow(
                               Icons.cloud,
-                              Colors.amber,
-                              'Carbon Score',
-                              scanResult?['carbonScore'] ?? 'Unknown',
+                              Colors.blue,
+                              'Recycled Score',
+                              scanResult?['recycled_carbon_score'] ?? 'Unknown',
                             ),
                             infoRow(
-                              Icons.science,
-                              Colors.blue,
-                              'Material',
-                              scanResult?['material'] ?? 'Unknown',
+                              Icons.cloud_queue,
+                              Colors.orange,
+                              'Unrecycled Score',
+                              scanResult?['unrecycled_carbon_score'] ??
+                                  'Unknown',
                             ),
+                            infoRow(
+                              Icons.eco,
+                              Colors.teal,
+                              'Impact (Recycled)',
+                              scanResult?['carbon_impact_rating_recycled'] ??
+                                  'Unknown',
+                            ),
+                            infoRow(
+                              Icons.warning,
+                              Colors.red,
+                              'Impact (Unrecycled)',
+                              scanResult?['carbon_impact_rating_unrecycled'] ??
+                                  'Unknown',
+                            ),
+
+                            SizedBox(height: 16),
+
+                            sectionHeader("📝 Notes:"),
+                            scanResult?['notes'] != null &&
+                                    (scanResult?['notes'] as List).isNotEmpty
+                                ? Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: List<Widget>.from(
+                                      (scanResult?['notes'] as List<dynamic>)
+                                          .map(
+                                            (note) => Padding(
+                                              padding: const EdgeInsets.only(
+                                                bottom: 4.0,
+                                                left: 12.0,
+                                              ),
+                                              child: Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Icon(
+                                                    Icons.circle,
+                                                    size: 6,
+                                                    color: Colors.grey,
+                                                  ),
+                                                  SizedBox(width: 6),
+                                                  Expanded(child: Text(note)),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                    ),
+                                  )
+                                : Text("No additional notes."),
                           ],
                         ),
                       ),
@@ -126,7 +263,56 @@ class _ScanPageState extends State<ScanPage> {
                   ),
 
                   SizedBox(height: 16),
-
+                  if ((scanResult?['has_subtypes'] ?? false) &&
+                      scanResult?['material'] != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Select subtype:",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            value: selectedSubtype,
+                            hint: Text("Choose subtype"),
+                            items:
+                                (subtypeOptions[scanResult!['material']
+                                            .toString()
+                                            .toLowerCase()] ??
+                                        [])
+                                    .map(
+                                      (type) => DropdownMenuItem(
+                                        value: type,
+                                        child: Text(type),
+                                      ),
+                                    )
+                                    .toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                selectedSubtype = value;
+                              });
+                            },
+                          ),
+                          SizedBox(height: 12),
+                          ElevatedButton.icon(
+                            onPressed: selectedSubtype != null
+                                ? () => submitSubtype(
+                                    scanResult!['material'],
+                                    selectedSubtype!,
+                                  )
+                                : null,
+                            icon: Icon(Icons.send),
+                            label: Text("Submit Subtype"),
+                          ),
+                        ],
+                      ),
+                    ),
                   ElevatedButton(
                     onPressed: () {
                       Navigator.push(
@@ -144,14 +330,14 @@ class _ScanPageState extends State<ScanPage> {
     );
   }
 
-  Widget infoRow(IconData icon, Color iconColor, String label, String value) {
+  Widget infoRow(IconData icon, Color iconColor, String label, dynamic value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         children: [
           Icon(icon, color: iconColor),
           SizedBox(width: 8),
-          Text('$label: $value'),
+          Text('$label: ${value ?? "--"}'),
         ],
       ),
     );
@@ -159,15 +345,16 @@ class _ScanPageState extends State<ScanPage> {
 }
 
 Future<Map<String, dynamic>> classifyImage(String imagePath) async {
+  print("🚀 Starting upload and POST for image: $imagePath");
   // 1. Set URL to Flask server endpoint
-  final url = Uri.parse('http://192.168.1.30:5001/detect');
+  final url = Uri.parse('http://192.168.1.21:5001/detect');
   // 2. Create POST request w file attached
   final request = http.MultipartRequest('POST', url);
   request.files.add(await http.MultipartFile.fromPath('image', imagePath));
-
+  print("📡 Sending request to backend...");
   // 3. Send the request and wait for the response
   final response = await request.send();
-
+  print("📥 Received response with status: ${response.statusCode}");
   // 4. If it's successful (status 200), read and decode the response
   if (response.statusCode == 200) {
     final responseBody = await response.stream.bytesToString();
@@ -176,10 +363,15 @@ Future<Map<String, dynamic>> classifyImage(String imagePath) async {
 
     // Convert parsed map to ClassificationResult and ScanRecord
     final classification = ClassificationResult(
-      className: parsed['class_name'],
-      recyclable: parsed['recyclable'],
       material: parsed['material'],
-      carbonScore: parsed['carbonScore'],
+      recyclable: parsed['recyclable'],
+      recycledCarbonScore: parsed['recycled_carbon_score'],
+      unrecycledCarbonScore: parsed['unrecycled_carbon_score'],
+      carbonImpactRecycled: parsed['carbon_impact_rating_recycled'],
+      carbonImpactUnrecycled: parsed['carbon_impact_rating_unrecycled'],
+      recyclingrate: parsed['recycling_rate_percent'],
+      hasSubtypes: parsed['has_subtypes'],
+      notes: List<String>.from(parsed['notes'] ?? []),
     );
 
     final scanRecord = ScanRecord(
@@ -197,10 +389,15 @@ Future<Map<String, dynamic>> classifyImage(String imagePath) async {
     // 5. Handle errors (like 500 or 404)
     print("Failed with status code: ${response.statusCode}");
     return {
-      'class_name': 'Error',
-      'recyclable': false,
-      'carbonScore': 'Error',
       'material': 'Error',
+      'recyclable': false,
+      'recycled_carbon_score': null,
+      'unrecycled_carbon_score': null,
+      'carbon_impact_rating_recycled': 'Error',
+      'carbon_impact_rating_unrecycled': 'Error',
+      'recycling_rate_percent': null,
+      'has_subtypes': false,
+      'notes': ['Error occurred'],
     };
   }
 }
