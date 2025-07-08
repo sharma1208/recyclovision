@@ -131,11 +131,15 @@ class ScanCard extends StatelessWidget {
               ),
               _buildDetailRow(
                 '🌿 Recycled Carbon Score:',
-                result.recycledCarbonScore ?? 'N/A',
+                result.recycledCarbonScore != null
+                    ? result.recycledCarbonScore!.toStringAsFixed(2)
+                    : 'N/A',
               ),
               _buildDetailRow(
                 '🔥 Carbon Score (without recycling):',
-                result.unrecycledCarbonScore ?? 'N/A',
+                result.unrecycledCarbonScore != null
+                    ? result.unrecycledCarbonScore!.toStringAsFixed(2)
+                    : 'N/A',
               ),
               _buildDetailRow(
                 '✅ Carbon Impact (Recycled):',

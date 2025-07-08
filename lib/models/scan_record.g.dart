@@ -59,8 +59,8 @@ class ClassificationResultAdapter extends TypeAdapter<ClassificationResult> {
     return ClassificationResult(
       material: fields[0] as String,
       recyclable: fields[1] as bool,
-      recycledCarbonScore: fields[2] as String?,
-      unrecycledCarbonScore: fields[3] as String?,
+      recycledCarbonScore: fields[2] as double?,
+      unrecycledCarbonScore: fields[3] as double?,
       carbonImpactRecycled: fields[4] as String?,
       carbonImpactUnrecycled: fields[5] as String?,
       recyclingrate: fields[6] as double?,

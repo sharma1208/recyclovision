@@ -75,11 +75,17 @@ class _ScanPageState extends State<ScanPage> {
         final classification = ClassificationResult(
           material: parsed['material'],
           recyclable: parsed['recyclable'],
-          recycledCarbonScore: parsed['recycled_carbon_score'],
-          unrecycledCarbonScore: parsed['unrecycled_carbon_score'],
+          recycledCarbonScore: parsed['recycled_carbon_score'] is double
+              ? parsed['recycled_carbon_score']
+              : null,
+          unrecycledCarbonScore: parsed['unrecycled_carbon_score'] is double
+              ? parsed['unrecycled_carbon_score']
+              : null,
           carbonImpactRecycled: parsed['carbon_impact_rating_recycled'],
           carbonImpactUnrecycled: parsed['carbon_impact_rating_unrecycled'],
-          recyclingrate: parsed['recycling_rate_percent'],
+          recyclingrate: parsed['recycling_rate_percent'] is double
+              ? parsed['recycling_rate_percent']
+              : null,
           hasSubtypes: parsed['has_subtypes'],
           notes: List<String>.from(parsed['notes'] ?? []),
         );
@@ -198,14 +204,21 @@ class _ScanPageState extends State<ScanPage> {
                               Icons.cloud,
                               Colors.blue,
                               'Recycled Score',
-                              scanResult?['recycled_carbon_score'] ?? 'Unknown',
+                              scanResult?['recycled_carbon_score'] != null
+                                  ? (scanResult!['recycled_carbon_score']
+                                            as double)
+                                        .toStringAsFixed(2)
+                                  : 'Unknown',
                             ),
                             infoRow(
                               Icons.cloud_queue,
                               Colors.orange,
                               'Unrecycled Score',
-                              scanResult?['unrecycled_carbon_score'] ??
-                                  'Unknown',
+                              scanResult?['unrecycled_carbon_score'] != null
+                                  ? (scanResult!['unrecycled_carbon_score']
+                                            as double)
+                                        .toStringAsFixed(2)
+                                  : 'Unknown',
                             ),
                             infoRow(
                               Icons.eco,
@@ -365,11 +378,17 @@ Future<Map<String, dynamic>> classifyImage(String imagePath) async {
     final classification = ClassificationResult(
       material: parsed['material'],
       recyclable: parsed['recyclable'],
-      recycledCarbonScore: parsed['recycled_carbon_score'],
-      unrecycledCarbonScore: parsed['unrecycled_carbon_score'],
+      recycledCarbonScore: parsed['recycled_carbon_score'] is double
+          ? parsed['recycled_carbon_score']
+          : null,
+      unrecycledCarbonScore: parsed['unrecycled_carbon_score'] is double
+          ? parsed['unrecycled_carbon_score']
+          : null,
       carbonImpactRecycled: parsed['carbon_impact_rating_recycled'],
       carbonImpactUnrecycled: parsed['carbon_impact_rating_unrecycled'],
-      recyclingrate: parsed['recycling_rate_percent'],
+      recyclingrate: parsed['recycling_rate_percent'] is double
+          ? parsed['recycling_rate_percent']
+          : null,
       hasSubtypes: parsed['has_subtypes'],
       notes: List<String>.from(parsed['notes'] ?? []),
     );

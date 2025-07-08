@@ -29,10 +29,10 @@ class ClassificationResult {
   final bool recyclable;
 
   @HiveField(2)
-  final String? recycledCarbonScore;
+  final double? recycledCarbonScore;
 
   @HiveField(3)
-  final String? unrecycledCarbonScore;
+  final double? unrecycledCarbonScore;
 
   @HiveField(4)
   final String? carbonImpactRecycled;
