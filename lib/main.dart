@@ -6,6 +6,7 @@ import 'package:recyclovision/scan_page.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:hive/hive.dart';
 import 'models/scan_record.dart'; // your ScanRecord and ClassificationResult model files
+import 'package:flutter_animate/flutter_animate.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // make sure Flutter is ready
@@ -71,22 +72,255 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  Widget _buildRocketLogo(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return TweenAnimationBuilder(
+      tween: Tween<double>(begin: screenHeight, end: -screenHeight * 0.16),
+      duration: const Duration(milliseconds: 1000),
+      curve: Curves.easeOutExpo,
+      builder: (_, value, child) {
+        return Transform.translate(
+          offset: Offset(0, value),
+          child: Transform.scale(
+            scale: 1.0 - (value / screenHeight) * 0.3,
+            child: child,
+          ),
+        );
+      },
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // 🌈 Rainbow glow background
+          Container(
+            width: 160,
+            height: 160,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  Colors.pinkAccent.withOpacity(0.3),
+                  Colors.orangeAccent.withOpacity(0.2),
+                  Colors.transparent,
+                ],
+                stops: [0.3, 0.7, 1.0],
+              ),
+            ),
+          ),
+          // ♻️ Main logo
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                colors: [Colors.blueAccent, Colors.greenAccent],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.greenAccent.withOpacity(0.6),
+                  blurRadius: 24,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: const Center(
+              child: Icon(Icons.recycling, size: 48, color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     print("Building MyHomePage");
 
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.green, title: Text(widget.title)),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            ElevatedButton(onPressed: getImage, child: Text("Scan")),
-          ],
-        ),
+      backgroundColor: Colors.black,
+      body: Stack(
+        alignment: Alignment.center,
+        children: [
+          // 🔁 Animated floating icons
+          Align(
+            alignment: Alignment.topLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 150, left: 70),
+              child: Icon(Icons.eco, size: 36, color: Colors.greenAccent)
+                  .animate(
+                    onPlay: (controller) => controller.repeat(reverse: true),
+                    delay: 100.ms,
+                  )
+                  .moveY(begin: -8, end: 8, duration: 1800.ms),
+            ),
+          ),
+          Align(
+            alignment: Alignment.topRight,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 150, right: 70),
+              child: Icon(Icons.public, size: 36, color: Colors.lightBlueAccent)
+                  .animate(
+                    onPlay: (controller) => controller.repeat(reverse: true),
+                    delay: 200.ms,
+                  )
+                  .moveY(begin: -8, end: 8, duration: 1800.ms),
+            ),
+          ),
+          Align(
+            alignment: FractionalOffset(0.0, 0.42),
+            child: Padding(
+              padding: const EdgeInsets.only(left: 70),
+              child:
+                  Icon(Icons.local_drink, size: 36, color: Colors.purpleAccent)
+                      .animate(
+                        onPlay: (controller) =>
+                            controller.repeat(reverse: true),
+                        delay: 300.ms,
+                      )
+                      .moveY(begin: -8, end: 8, duration: 1800.ms),
+            ),
+          ),
+          Align(
+            alignment: FractionalOffset(1.0, 0.42),
+            child: Padding(
+              padding: const EdgeInsets.only(right: 70),
+              child: Icon(Icons.waves, size: 36, color: Colors.cyanAccent)
+                  .animate(
+                    onPlay: (controller) => controller.repeat(reverse: true),
+                    delay: 400.ms,
+                  )
+                  .moveY(begin: -8, end: 8, duration: 1800.ms),
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 40, left: 30),
+              child:
+                  Icon(
+                        Icons.energy_savings_leaf,
+                        size: 36,
+                        color: Colors.tealAccent,
+                      )
+                      .animate(
+                        onPlay: (controller) =>
+                            controller.repeat(reverse: true),
+                        delay: 500.ms,
+                      )
+                      .moveY(begin: -8, end: 8, duration: 1800.ms),
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomRight,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 40, right: 30),
+              child: Icon(Icons.recycling, size: 36, color: Colors.amberAccent)
+                  .animate(
+                    onPlay: (controller) => controller.repeat(reverse: true),
+                    delay: 600.ms,
+                  )
+                  .moveY(begin: -8, end: 8, duration: 1800.ms),
+            ),
+          ),
+
+          // 🚀 Logo animation (from bottom of screen)
+          _buildRocketLogo(context),
+
+          // ✨ Main content (text, button, terms)
+          SafeArea(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 24,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 240), // Spacer below rocket
+
+                    Text(
+                          'Welcome to RecycloVision',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                          textAlign: TextAlign.center,
+                        )
+                        .animate(delay: 1000.ms)
+                        .fade(duration: 400.ms)
+                        .slideY(begin: 0.5),
+
+                    const SizedBox(height: 12),
+
+                    Text(
+                          'Reduce waste. Know your impact.',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[300],
+                          ),
+                          textAlign: TextAlign.center,
+                        )
+                        .animate(delay: 1200.ms)
+                        .fade(duration: 400.ms)
+                        .slideY(begin: 0.4),
+
+                    const SizedBox(height: 20),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: getImage,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Scan',
+                          style: TextStyle(fontSize: 16, color: Colors.white),
+                        ),
+                      ),
+                    ).animate(delay: 1400.ms).fadeIn(duration: 400.ms),
+
+                    const SizedBox(height: 32),
+
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                      child: Text.rich(
+                        TextSpan(
+                          text: 'By using RecycloVision, you agree to the ',
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 12,
+                          ),
+                          children: const [
+                            TextSpan(
+                              text: 'terms',
+                              style: TextStyle(color: Colors.blue),
+                            ),
+                            TextSpan(text: ' and '),
+                            TextSpan(
+                              text: 'privacy policy',
+                              style: TextStyle(color: Colors.blue),
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
+                      ).animate(delay: 1600.ms).fadeIn(duration: 300.ms),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

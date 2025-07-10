@@ -32,28 +32,88 @@ class _ScanHistoryPageState extends State<ScanHistoryPage> {
         backgroundColor: Colors.green,
       ),
       body: ValueListenableBuilder(
-        //ValueListenable ensures automatic refresh
-        valueListenable: scanBox
-            .listenable(), //listens for changes in data and whenever change occurs, rebuilds UI
+        valueListenable: scanBox.listenable(),
         builder: (context, Box<ScanRecord> box, _) {
           if (box.isEmpty) {
             return const Center(child: Text('No scans yet.'));
           }
 
-          return ListView.builder(
-            //creates scrollable lists and only widgets for visible items
-            itemCount: box.length, // # of saved scans
-            itemBuilder: (context, index) {
-              // index goes from 0 to box.length - 1
-              final scan = box.getAt(
-                index,
-              )!; //fetches ScanRecord at the index, knowing it wont be null
-              return ScanCard(
-                //displays scan
-                scanRecord: scan,
-                onDelete: () => deleteScan(index),
-              );
-            },
+          // Group records by carbonImpactUnrecycled
+          final Map<String, List<ScanRecord>> groupedRecords = {
+            'low': [],
+            'medium': [],
+            'high': [],
+            'unknown': [],
+          };
+
+          for (int i = 0; i < box.length; i++) {
+            final scan = box.getAt(i)!;
+            final impact =
+                scan.classificationResult.carbonImpactUnrecycled
+                    ?.toLowerCase() ??
+                'unknown';
+            if (groupedRecords.containsKey(impact)) {
+              groupedRecords[impact]!.add(scan);
+            } else {
+              groupedRecords['unknown']!.add(scan);
+            }
+          }
+
+          // Sort within each group by most recent
+          groupedRecords.forEach((_, list) {
+            list.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+          });
+
+          final Map<String, Color> headerColors = {
+            'low': Colors.green,
+            'medium': Colors.orange,
+            'high': Colors.red,
+            'unknown': Colors.grey,
+          };
+
+          return ListView(
+            children: groupedRecords.entries
+                .where((entry) => entry.value.isNotEmpty)
+                .map((entry) {
+                  final label =
+                      '${entry.key[0].toUpperCase()}${entry.key.substring(1)} Impact';
+                  final color = headerColors[entry.key] ?? Colors.black;
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Theme(
+                        data: Theme.of(
+                          context,
+                        ).copyWith(dividerColor: Colors.transparent),
+                        child: ExpansionTile(
+                          title: Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: color,
+                            ),
+                          ),
+                          children: entry.value.map((record) {
+                            final recordIndex = box.values.toList().indexOf(
+                              record,
+                            );
+                            return ScanCard(
+                              scanRecord: record,
+                              onDelete: () => deleteScan(recordIndex),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                  );
+                })
+                .toList(),
           );
         },
       ),

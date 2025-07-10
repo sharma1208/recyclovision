@@ -7,6 +7,7 @@ import 'package:hive/hive.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/scan_record.dart';
 import 'scan_historypage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ScanPage extends StatefulWidget {
   final String imagePath;
@@ -19,6 +20,7 @@ class ScanPage extends StatefulWidget {
 class _ScanPageState extends State<ScanPage> {
   Map<String, dynamic>? scanResult; // Nullable because it starts empty
   bool isLoading = true; // Track loading state
+  int recycledItemCount = 0;
   Map<String, List<String>> subtypeOptions = {
     "plastic": ["HDPE", "PET", "PP", "LDPE", "LLDPE", "PS", "PVC"],
     "metal": ["aluminum cans", "aluminum ingot", "steel cans", "copper wire"],
@@ -38,12 +40,24 @@ class _ScanPageState extends State<ScanPage> {
   @override
   void initState() {
     super.initState();
+    _loadRecycledCount();
     classifyImage(widget.imagePath).then((result) {
       setState(() {
         scanResult = result;
         isLoading = false;
       });
     });
+  }
+
+  Future<void> _loadRecycledCount() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      setState(() {
+        recycledItemCount = prefs.getInt('recycledItemCount') ?? 0;
+      });
+    } catch (e) {
+      print("⚠️ Failed to load recycled count: $e");
+    }
   }
 
   //Same logic as classifyimage, just now updating with subtypes based on drop
@@ -114,6 +128,49 @@ class _ScanPageState extends State<ScanPage> {
     }
   }
 
+  void _markItemAsRecycled() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      int count = prefs.getInt('recycledItemCount') ?? 0;
+      count += 1;
+      await prefs.setInt('recycledItemCount', count);
+
+      setState(() {
+        recycledItemCount = count;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Item marked as recycled! Total: $count'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      if (count % 10 == 0) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => RecyclingMiniGameDialog(
+            onGameComplete: () {
+              // maybe reward user here, update state, etc.
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Mini-game complete! 🎉')),
+              );
+            },
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ SharedPreferences error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error saving recycled item count.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Widget sectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -126,6 +183,22 @@ class _ScanPageState extends State<ScanPage> {
           decorationColor: Colors.green,
           decorationThickness: 2,
         ),
+      ),
+    );
+  }
+
+  void _showMiniGameDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("🎉 Reward Unlocked!"),
+        content: Text("You've recycled 10 items! Here's a bonus mini game 🎮"),
+        actions: [
+          TextButton(
+            child: Text("Close"),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
       ),
     );
   }
@@ -181,6 +254,66 @@ class _ScanPageState extends State<ScanPage> {
                             ),
 
                             SizedBox(height: 16),
+
+                            if ((scanResult?['has_subtypes'] ?? false) &&
+                                scanResult?['material'] != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8.0),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      "Subtype: ",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: DropdownButtonFormField<String>(
+                                        value: selectedSubtype,
+                                        hint: Text("Choose subtype"),
+                                        isExpanded: true,
+                                        decoration: InputDecoration(
+                                          contentPadding: EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 4,
+                                          ),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                        ),
+                                        items:
+                                            (subtypeOptions[scanResult!['material']
+                                                        .toString()
+                                                        .toLowerCase()] ??
+                                                    [])
+                                                .map(
+                                                  (type) => DropdownMenuItem(
+                                                    value: type,
+                                                    child: Text(type),
+                                                  ),
+                                                )
+                                                .toList(),
+                                        onChanged: (value) {
+                                          if (value != null) {
+                                            setState(() {
+                                              selectedSubtype = value;
+                                            });
+                                            submitSubtype(
+                                              scanResult!['material'],
+                                              value,
+                                            );
+                                          }
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
                             sectionHeader("♻️ Recycling Details:"),
                             infoRow(
                               Icons.check_circle,
@@ -269,6 +402,28 @@ class _ScanPageState extends State<ScanPage> {
                                     ),
                                   )
                                 : Text("No additional notes."),
+                            if (scanResult?['recycled_carbon_score'] != null &&
+                                scanResult?['recycled_carbon_score'] !=
+                                    'Unknown') ...[
+                              SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                icon: Icon(Icons.check),
+                                label: Text("Mark as Recycled"),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green[700],
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  _markItemAsRecycled();
+                                },
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -276,56 +431,7 @@ class _ScanPageState extends State<ScanPage> {
                   ),
 
                   SizedBox(height: 16),
-                  if ((scanResult?['has_subtypes'] ?? false) &&
-                      scanResult?['material'] != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Select subtype:",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          DropdownButtonFormField<String>(
-                            value: selectedSubtype,
-                            hint: Text("Choose subtype"),
-                            items:
-                                (subtypeOptions[scanResult!['material']
-                                            .toString()
-                                            .toLowerCase()] ??
-                                        [])
-                                    .map(
-                                      (type) => DropdownMenuItem(
-                                        value: type,
-                                        child: Text(type),
-                                      ),
-                                    )
-                                    .toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                selectedSubtype = value;
-                              });
-                            },
-                          ),
-                          SizedBox(height: 12),
-                          ElevatedButton.icon(
-                            onPressed: selectedSubtype != null
-                                ? () => submitSubtype(
-                                    scanResult!['material'],
-                                    selectedSubtype!,
-                                  )
-                                : null,
-                            icon: Icon(Icons.send),
-                            label: Text("Submit Subtype"),
-                          ),
-                        ],
-                      ),
-                    ),
+
                   ElevatedButton(
                     onPressed: () {
                       Navigator.push(
@@ -336,6 +442,23 @@ class _ScanPageState extends State<ScanPage> {
                       );
                     },
                     child: const Text('Scan History'),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Recycled Item Streak',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.teal[700],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        RecycledItemTracker(recycledCount: recycledItemCount),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -419,4 +542,223 @@ Future<Map<String, dynamic>> classifyImage(String imagePath) async {
       'notes': ['Error occurred'],
     };
   }
+}
+
+class RecycledItemTracker extends StatelessWidget {
+  final int recycledCount;
+  final int goal; // e.g. 10 items before reward
+
+  const RecycledItemTracker({
+    Key? key,
+    required this.recycledCount,
+    this.goal = 10,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    List<Widget> segments = [];
+
+    for (int i = 0; i < goal; i++) {
+      bool isFilled = i < (recycledCount % goal);
+      segments.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isFilled ? Colors.green : Colors.grey[300],
+              border: Border.all(color: Colors.black12),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Row(mainAxisAlignment: MainAxisAlignment.center, children: segments);
+  }
+}
+
+class RecyclingMiniGameDialog extends StatefulWidget {
+  final VoidCallback onGameComplete;
+
+  RecyclingMiniGameDialog({required this.onGameComplete});
+
+  @override
+  _RecyclingMiniGameDialogState createState() =>
+      _RecyclingMiniGameDialogState();
+}
+
+class _RecyclingMiniGameDialogState extends State<RecyclingMiniGameDialog> {
+  // Items to sort, each with correct bin
+  final List<_RecyclableItem> items = [
+    _RecyclableItem(name: "Plastic Bottle", emoji: "🥤", correctBin: "Plastic"),
+    _RecyclableItem(name: "Newspaper", emoji: "📰", correctBin: "Paper"),
+  ];
+
+  // Track items sorted correctly
+  final Set<int> correctlySortedIndices = {};
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('🎉 Recycling Mini-Game!'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('Drag each item to the correct bin below.'),
+          const SizedBox(height: 12),
+          // Draggable items row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: List.generate(items.length, (index) {
+              if (correctlySortedIndices.contains(index)) {
+                // If sorted correctly, hide or show checkmark
+                return Column(
+                  children: [
+                    Text(
+                      items[index].emoji,
+                      style: const TextStyle(fontSize: 40),
+                    ),
+                    const Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                      size: 28,
+                    ),
+                  ],
+                );
+              }
+              return Draggable<int>(
+                data: index,
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: Text(
+                    items[index].emoji,
+                    style: const TextStyle(fontSize: 50),
+                  ),
+                ),
+                childWhenDragging: Opacity(
+                  opacity: 0.3,
+                  child: Text(
+                    items[index].emoji,
+                    style: const TextStyle(fontSize: 40),
+                  ),
+                ),
+                child: Text(
+                  items[index].emoji,
+                  style: const TextStyle(fontSize: 40),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 24),
+
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: ["Plastic", "Paper", "Metal"].map((binName) {
+                return Container(
+                  width: 90,
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                  ), // add some margin
+                  child: DragTarget<int>(
+                    builder: (context, candidateData, rejectedData) {
+                      final isActive = candidateData.isNotEmpty;
+                      return Container(
+                        height: 120,
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? Colors.green[200]
+                              : Colors.grey[300],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isActive ? Colors.green : Colors.grey,
+                            width: 3,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              binName == "Plastic"
+                                  ? Icons.local_drink
+                                  : binName == "Paper"
+                                  ? Icons.menu_book
+                                  : Icons.inbox,
+                              size: 48,
+                              color: Colors.black87,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              binName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    onWillAccept: (index) =>
+                        !correctlySortedIndices.contains(index!) &&
+                        items[index].correctBin == binName,
+                    onAccept: (index) {
+                      setState(() {
+                        correctlySortedIndices.add(index);
+                      });
+                      if (correctlySortedIndices.length == items.length) {
+                        // Game complete!
+                        Future.delayed(const Duration(milliseconds: 500), () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('🎉 Well done!'),
+                              content: const Text(
+                                'You sorted all items correctly! Keep recycling! ♻️',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.of(
+                                      context,
+                                    ).pop(); // Close congrats
+                                    Navigator.of(
+                                      context,
+                                    ).pop(); // Close game dialog
+                                    widget.onGameComplete();
+                                  },
+                                  child: const Text('Close'),
+                                ),
+                              ],
+                            ),
+                          );
+                        });
+                      }
+                    },
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecyclableItem {
+  final String name;
+  final String emoji;
+  final String correctBin;
+
+  _RecyclableItem({
+    required this.name,
+    required this.emoji,
+    required this.correctBin,
+  });
 }
