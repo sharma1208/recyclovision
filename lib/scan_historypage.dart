@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'models/scan_record.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'app_scaffold.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class ScanHistoryPage extends StatefulWidget {
   const ScanHistoryPage({super.key});
@@ -16,29 +18,31 @@ class _ScanHistoryPageState extends State<ScanHistoryPage> {
   @override
   void initState() {
     super.initState();
-    scanBox = Hive.box<ScanRecord>('scanRecords'); //past scans stored locally
+    scanBox = Hive.box<ScanRecord>('scanRecords');
   }
 
   void deleteScan(int index) async {
     await scanBox.deleteAt(index);
-    setState(() {}); // refresh the UI
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Scan History'),
-        backgroundColor: Colors.green,
-      ),
+    return AppScaffold(
+      title: 'Scan History',
+      backgroundColor: Colors.black,
       body: ValueListenableBuilder(
         valueListenable: scanBox.listenable(),
         builder: (context, Box<ScanRecord> box, _) {
           if (box.isEmpty) {
-            return const Center(child: Text('No scans yet.'));
+            return Center(
+              child: Text(
+                'No scans yet.',
+                style: TextStyle(color: Colors.grey[400], fontSize: 16),
+              ),
+            );
           }
 
-          // Group records by carbonImpactUnrecycled
           final Map<String, List<ScanRecord>> groupedRecords = {
             'low': [],
             'medium': [],
@@ -59,55 +63,72 @@ class _ScanHistoryPageState extends State<ScanHistoryPage> {
             }
           }
 
-          // Sort within each group by most recent
           groupedRecords.forEach((_, list) {
             list.sort((a, b) => b.timestamp.compareTo(a.timestamp));
           });
 
           final Map<String, Color> headerColors = {
-            'low': Colors.green,
-            'medium': Colors.orange,
-            'high': Colors.red,
+            'low': Colors.greenAccent,
+            'medium': Colors.orangeAccent,
+            'high': Colors.redAccent,
             'unknown': Colors.grey,
           };
 
           return ListView(
+            padding: const EdgeInsets.symmetric(vertical: 12),
             children: groupedRecords.entries
                 .where((entry) => entry.value.isNotEmpty)
                 .map((entry) {
                   final label =
                       '${entry.key[0].toUpperCase()}${entry.key.substring(1)} Impact';
-                  final color = headerColors[entry.key] ?? Colors.black;
+                  final color = headerColors[entry.key] ?? Colors.white;
 
                   return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     child: Card(
-                      elevation: 2,
+                      color: Colors.grey[900],
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
                       ),
+                      elevation: 4,
                       child: Theme(
                         data: Theme.of(
                           context,
                         ).copyWith(dividerColor: Colors.transparent),
                         child: ExpansionTile(
+                          tilePadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 8,
+                          ),
+                          collapsedTextColor: color,
+                          textColor: color,
+                          iconColor: color,
+                          collapsedIconColor: color,
                           title: Text(
                             label,
                             style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
                               color: color,
                             ),
                           ),
-                          children: entry.value.map((record) {
-                            final recordIndex = box.values.toList().indexOf(
-                              record,
-                            );
-                            return ScanCard(
-                              scanRecord: record,
-                              onDelete: () => deleteScan(recordIndex),
-                            );
-                          }).toList(),
+                          children: entry.value
+                              .map((record) {
+                                final recordIndex = box.values.toList().indexOf(
+                                  record,
+                                );
+                                return ScanCard(
+                                  scanRecord: record,
+                                  onDelete: () => deleteScan(recordIndex),
+                                );
+                              })
+                              .toList()
+                              .animate(delay: 200.ms)
+                              .fade(duration: 600.ms)
+                              .slideY(begin: 0.1),
                         ),
                       ),
                     ),
@@ -130,120 +151,141 @@ class ScanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    SizedBox(width: 12);
     return Card(
-      // Adds rounded corners and shadow
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      // Content of the card
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      color: Colors.grey[850],
+      elevation: 3,
       child: ListTile(
-        // Title (e.g., scan name or material)
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 12,
+        ),
         title: Text(
           scanRecord.classificationResult.material ?? 'Unknown Material',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
-
-        // Subtitle (e.g., date scanned)
         subtitle: Text(
-          'Scanned on: ${scanRecord.timestamp ?? 'Unknown date'}',
-          style: const TextStyle(color: Colors.grey),
+          'Scanned on: ${scanRecord.timestamp?.toLocal().toString().split('.')[0] ?? 'Unknown'}',
+          style: TextStyle(color: Colors.grey[400]),
         ),
-
-        // Trailing delete icon
         trailing: IconButton(
-          icon: const Icon(Icons.delete, color: Colors.red),
-          onPressed: onDelete, // Calls the onDelete callback
+          icon: const Icon(Icons.delete, color: Colors.redAccent),
+          onPressed: onDelete,
+          tooltip: 'Delete this scan',
         ),
-
-        // Optional: tap to show details
         onTap: () => _showDetailsDialog(context, scanRecord),
-
-        // Example: show a detailed dialog (you can customize!)
       ),
     );
   }
 
   void _showDetailsDialog(BuildContext context, ScanRecord scanRecord) {
     final result = scanRecord.classificationResult;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Scan Details',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: SingleChildScrollView(
-          // Prevents overflow
-          child: ListBody(
-            children: [
-              _buildDetailRow('🔍 Material:', result.material ?? 'Unknown'),
-              _buildDetailRow(
-                '♻️ Recyclable:',
-                result.recyclable ? 'Yes' : 'No',
-              ),
-              _buildDetailRow(
-                '📈 Recycling Rate:',
-                result.recyclingrate != null
-                    ? '${result.recyclingrate!.toStringAsFixed(1)}%'
-                    : 'N/A',
-              ),
-              _buildDetailRow(
-                '🌿 Recycled Carbon Score:',
-                result.recycledCarbonScore != null
-                    ? result.recycledCarbonScore!.toStringAsFixed(2)
-                    : 'N/A',
-              ),
-              _buildDetailRow(
-                '🔥 Carbon Score (without recycling):',
-                result.unrecycledCarbonScore != null
-                    ? result.unrecycledCarbonScore!.toStringAsFixed(2)
-                    : 'N/A',
-              ),
-              _buildDetailRow(
-                '✅ Carbon Impact (Recycled):',
-                result.carbonImpactRecycled ?? 'N/A',
-              ),
-              _buildDetailRow(
-                '⚠️ Carbon Impact (Not recycled):',
-                result.carbonImpactUnrecycled ?? 'N/A',
-              ),
-              _buildDetailRow(
-                '🧩 Has Subtypes:',
-                result.hasSubtypes ? 'Yes' : 'No',
-              ),
-              const SizedBox(height: 10),
-              _buildDetailRow('📅 Timestamp:', scanRecord.timestamp.toString()),
-
-              if (result.notes != null && result.notes!.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                const Text(
-                  '📝 Notes:',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                ...result.notes!.map(
-                  (note) => Padding(
-                    padding: const EdgeInsets.only(top: 4.0, left: 8.0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text("• ", style: TextStyle(fontSize: 16)),
-                        Expanded(child: Text(note)),
-                      ],
-                    ),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.grey[900],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Scan Details',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 22,
+                    color: Colors.greenAccent[200],
                   ),
                 ),
+                const SizedBox(height: 12),
+                _buildDetailRow('🔍 Material:', result.material ?? 'Unknown'),
+                _buildDetailRow(
+                  '♻️ Recyclable:',
+                  result.recyclable ? 'Yes' : 'No',
+                ),
+                _buildDetailRow(
+                  '📈 Recycling Rate:',
+                  result.recyclingrate != null
+                      ? '${result.recyclingrate!.toStringAsFixed(1)}%'
+                      : 'N/A',
+                ),
+                _buildDetailRow(
+                  '🌿 Recycled Carbon Score:',
+                  result.recycledCarbonScore != null
+                      ? result.recycledCarbonScore!.toStringAsFixed(2)
+                      : 'N/A',
+                ),
+                _buildDetailRow(
+                  '🔥 Carbon Score (without recycling):',
+                  result.unrecycledCarbonScore != null
+                      ? result.unrecycledCarbonScore!.toStringAsFixed(2)
+                      : 'N/A',
+                ),
+                _buildDetailRow(
+                  '✅ Carbon Impact (Recycled):',
+                  result.carbonImpactRecycled ?? 'N/A',
+                ),
+                _buildDetailRow(
+                  '⚠️ Carbon Impact (Not recycled):',
+                  result.carbonImpactUnrecycled ?? 'N/A',
+                ),
+                _buildDetailRow(
+                  '🧩 Has Subtypes:',
+                  result.hasSubtypes ? 'Yes' : 'No',
+                ),
+                const SizedBox(height: 10),
+                _buildDetailRow(
+                  '📅 Timestamp:',
+                  scanRecord.timestamp?.toLocal().toString() ?? 'N/A',
+                ),
+                if (result.notes != null && result.notes!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    '📝 Notes:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.greenAccent[200],
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  ...result.notes!.map(
+                    (note) => Padding(
+                      padding: const EdgeInsets.only(top: 4.0, left: 12.0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "• ",
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.greenAccent,
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              note,
+                              style: const TextStyle(color: Colors.white70),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close', style: TextStyle(color: Colors.blue)),
-          ),
-        ],
       ),
     );
   }
@@ -254,9 +296,21 @@ class ScanCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(width: 4),
-          Expanded(child: Text(value ?? 'N/A', softWrap: true)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.greenAccent,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(color: Colors.white70),
+              softWrap: true,
+            ),
+          ),
         ],
       ),
     );

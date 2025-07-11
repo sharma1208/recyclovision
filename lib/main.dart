@@ -7,6 +7,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:hive/hive.dart';
 import 'models/scan_record.dart'; // your ScanRecord and ClassificationResult model files
 import 'package:flutter_animate/flutter_animate.dart';
+import 'app_scaffold.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // make sure Flutter is ready
@@ -139,7 +140,8 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     print("Building MyHomePage");
 
-    return Scaffold(
+    return AppScaffold(
+      title: 'Home', // 👈 REQUIRED for the AppBar + Drawer
       backgroundColor: Colors.black,
       body: Stack(
         alignment: Alignment.center,
@@ -148,7 +150,7 @@ class _MyHomePageState extends State<MyHomePage> {
           Align(
             alignment: Alignment.topLeft,
             child: Padding(
-              padding: const EdgeInsets.only(top: 150, left: 70),
+              padding: const EdgeInsets.only(top: 120, left: 70),
               child: Icon(Icons.eco, size: 36, color: Colors.greenAccent)
                   .animate(
                     onPlay: (controller) => controller.repeat(reverse: true),
@@ -160,7 +162,7 @@ class _MyHomePageState extends State<MyHomePage> {
           Align(
             alignment: Alignment.topRight,
             child: Padding(
-              padding: const EdgeInsets.only(top: 150, right: 70),
+              padding: const EdgeInsets.only(top: 120, right: 70),
               child: Icon(Icons.public, size: 36, color: Colors.lightBlueAccent)
                   .animate(
                     onPlay: (controller) => controller.repeat(reverse: true),

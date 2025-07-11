@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import '../models/scan_record.dart';
 import 'scan_historypage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'app_scaffold.dart';
 
 class ScanPage extends StatefulWidget {
   final String imagePath;
@@ -180,8 +181,9 @@ class _ScanPageState extends State<ScanPage> {
           fontSize: 18,
           fontWeight: FontWeight.bold,
           decoration: TextDecoration.underline,
-          decorationColor: Colors.green,
+          decorationColor: Colors.greenAccent,
           decorationThickness: 2,
+          color: Colors.white,
         ),
       ),
     );
@@ -205,23 +207,33 @@ class _ScanPageState extends State<ScanPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Scan Results Page')),
+    final notes = scanResult?['notes'] as List<dynamic>? ?? [];
+
+    return AppScaffold(
+      title: 'Scan Results',
+      backgroundColor: Colors.black,
       body: SingleChildScrollView(
         child: isLoading
-            ? CircularProgressIndicator() // show spinner while loading
+            ? Center(
+                child: CircularProgressIndicator(),
+              ) // show spinner while loading
             : scanResult == null
-            ? Text('No data found.') // fallback if something went wrong
+            ? Center(
+                child: Text(
+                  'No data found.',
+                  style: TextStyle(color: Colors.white70),
+                ),
+              ) // fallback if something went wrong
             : Column(
                 children: [
                   SizedBox(height: 5),
                   Container(
                     margin: EdgeInsets.symmetric(horizontal: 24.0),
                     child: Card(
+                      color: Colors.grey[900],
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
-
                       elevation: 6,
                       child: Padding(
                         padding: EdgeInsets.all(24.0),
@@ -237,7 +249,7 @@ class _ScanPageState extends State<ScanPage> {
                                 style: TextStyle(
                                   fontSize: 26,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.green[700],
+                                  color: Colors.greenAccent[400],
                                 ),
                               ),
                             ),
@@ -266,6 +278,7 @@ class _ScanPageState extends State<ScanPage> {
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,
+                                        color: Colors.white70,
                                       ),
                                     ),
                                     SizedBox(width: 8),
@@ -274,7 +287,11 @@ class _ScanPageState extends State<ScanPage> {
                                         value: selectedSubtype,
                                         hint: Text("Choose subtype"),
                                         isExpanded: true,
+                                        dropdownColor: Colors.grey[850],
+                                        style: TextStyle(color: Colors.white),
                                         decoration: InputDecoration(
+                                          filled: true,
+                                          fillColor: Colors.grey[800],
                                           contentPadding: EdgeInsets.symmetric(
                                             horizontal: 12,
                                             vertical: 4,
@@ -283,6 +300,7 @@ class _ScanPageState extends State<ScanPage> {
                                             borderRadius: BorderRadius.circular(
                                               8,
                                             ),
+                                            borderSide: BorderSide.none,
                                           ),
                                         ),
                                         items:
@@ -317,7 +335,7 @@ class _ScanPageState extends State<ScanPage> {
                             sectionHeader("♻️ Recycling Details:"),
                             infoRow(
                               Icons.check_circle,
-                              Colors.green,
+                              Colors.greenAccent,
                               'Recyclable',
                               (scanResult?['recyclable'] ?? false)
                                   ? "Yes"
@@ -325,7 +343,7 @@ class _ScanPageState extends State<ScanPage> {
                             ),
                             infoRow(
                               Icons.percent,
-                              Colors.deepPurple,
+                              Colors.deepPurpleAccent,
                               'Recycling Rate',
                               '${(scanResult?['recycling_rate_percent'] is double) ? (scanResult!['recycling_rate_percent'] as double).toStringAsFixed(1) : scanResult?['recycling_rate_percent'] ?? '--'}%',
                             ),
@@ -335,7 +353,7 @@ class _ScanPageState extends State<ScanPage> {
                             sectionHeader("🌍 Carbon Impact:"),
                             infoRow(
                               Icons.cloud,
-                              Colors.blue,
+                              Colors.lightBlueAccent,
                               'Recycled Score',
                               scanResult?['recycled_carbon_score'] != null
                                   ? (scanResult!['recycled_carbon_score']
@@ -345,7 +363,7 @@ class _ScanPageState extends State<ScanPage> {
                             ),
                             infoRow(
                               Icons.cloud_queue,
-                              Colors.orange,
+                              Colors.orangeAccent,
                               'Unrecycled Score',
                               scanResult?['unrecycled_carbon_score'] != null
                                   ? (scanResult!['unrecycled_carbon_score']
@@ -355,14 +373,14 @@ class _ScanPageState extends State<ScanPage> {
                             ),
                             infoRow(
                               Icons.eco,
-                              Colors.teal,
+                              Colors.tealAccent,
                               'Impact (Recycled)',
                               scanResult?['carbon_impact_rating_recycled'] ??
                                   'Unknown',
                             ),
                             infoRow(
                               Icons.warning,
-                              Colors.red,
+                              Colors.redAccent,
                               'Impact (Unrecycled)',
                               scanResult?['carbon_impact_rating_unrecycled'] ??
                                   'Unknown',
@@ -371,37 +389,41 @@ class _ScanPageState extends State<ScanPage> {
                             SizedBox(height: 16),
 
                             sectionHeader("📝 Notes:"),
-                            scanResult?['notes'] != null &&
-                                    (scanResult?['notes'] as List).isNotEmpty
-                                ? Column(
+                            if (notes.isNotEmpty) ...[
+                              ...notes.map(
+                                (note) => Padding(
+                                  padding: const EdgeInsets.only(
+                                    bottom: 4.0,
+                                    left: 12.0,
+                                  ),
+                                  child: Row(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
-                                    children: List<Widget>.from(
-                                      (scanResult?['notes'] as List<dynamic>)
-                                          .map(
-                                            (note) => Padding(
-                                              padding: const EdgeInsets.only(
-                                                bottom: 4.0,
-                                                left: 12.0,
-                                              ),
-                                              child: Row(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Icon(
-                                                    Icons.circle,
-                                                    size: 6,
-                                                    color: Colors.grey,
-                                                  ),
-                                                  SizedBox(width: 6),
-                                                  Expanded(child: Text(note)),
-                                                ],
-                                              ),
-                                            ),
+                                    children: [
+                                      Icon(
+                                        Icons.circle,
+                                        size: 6,
+                                        color: Colors.grey,
+                                      ),
+                                      SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          note.toString(),
+                                          style: TextStyle(
+                                            color: Colors.white70,
                                           ),
-                                    ),
-                                  )
-                                : Text("No additional notes."),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ] else
+                              Text(
+                                "No additional notes.",
+                                style: TextStyle(color: Colors.white38),
+                              ),
+
                             if (scanResult?['recycled_carbon_score'] != null &&
                                 scanResult?['recycled_carbon_score'] !=
                                     'Unknown') ...[
@@ -410,7 +432,7 @@ class _ScanPageState extends State<ScanPage> {
                                 icon: Icon(Icons.check),
                                 label: Text("Mark as Recycled"),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green[700],
+                                  backgroundColor: Colors.greenAccent[700],
                                   padding: EdgeInsets.symmetric(
                                     horizontal: 24,
                                     vertical: 14,
@@ -419,9 +441,7 @@ class _ScanPageState extends State<ScanPage> {
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
-                                onPressed: () {
-                                  _markItemAsRecycled();
-                                },
+                                onPressed: _markItemAsRecycled,
                               ),
                             ],
                           ],
@@ -441,8 +461,19 @@ class _ScanPageState extends State<ScanPage> {
                         ),
                       );
                     },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.greenAccent[700],
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                     child: const Text('Scan History'),
                   ),
+
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Column(
@@ -452,7 +483,7 @@ class _ScanPageState extends State<ScanPage> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.teal[700],
+                            color: Colors.tealAccent[400],
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -473,7 +504,10 @@ class _ScanPageState extends State<ScanPage> {
         children: [
           Icon(icon, color: iconColor),
           SizedBox(width: 8),
-          Text('$label: ${value ?? "--"}'),
+          Text(
+            '$label: ${value ?? "--"}',
+            style: TextStyle(color: Colors.white70),
+          ),
         ],
       ),
     );
