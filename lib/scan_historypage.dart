@@ -207,46 +207,69 @@ class ScanCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                _buildDetailRow('🔍 Material:', result.material ?? 'Unknown'),
-                _buildDetailRow(
-                  '♻️ Recyclable:',
-                  result.recyclable ? 'Yes' : 'No',
+
+                // Horizontal scroll wrapping the details row
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisSize: MainAxisSize
+                        .min, // IMPORTANT to prevent infinite width error
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildDetailRow(
+                            '🔍 Material:',
+                            result.material ?? 'Unknown',
+                          ),
+                          _buildDetailRow(
+                            '♻️ Recyclable:',
+                            result.recyclable ? 'Yes' : 'No',
+                          ),
+                          _buildDetailRow(
+                            '📈 Recycling Rate:',
+                            result.recyclingrate != null
+                                ? '${result.recyclingrate!.toStringAsFixed(1)}%'
+                                : 'N/A',
+                          ),
+                          _buildDetailRow(
+                            '🌿 Recycled Carbon Score:',
+                            result.recycledCarbonScore != null
+                                ? result.recycledCarbonScore!.toStringAsFixed(2)
+                                : 'N/A',
+                          ),
+                          _buildDetailRow(
+                            '🔥 Carbon Score (without recycling):',
+                            result.unrecycledCarbonScore != null
+                                ? result.unrecycledCarbonScore!.toStringAsFixed(
+                                    2,
+                                  )
+                                : 'N/A',
+                          ),
+                          _buildDetailRow(
+                            '✅ Carbon Impact (Recycled):',
+                            result.carbonImpactRecycled ?? 'N/A',
+                          ),
+                          _buildDetailRow(
+                            '⚠️ Carbon Impact (Not recycled):',
+                            result.carbonImpactUnrecycled ?? 'N/A',
+                          ),
+                          _buildDetailRow(
+                            '🧩 Has Subtypes:',
+                            result.hasSubtypes ? 'Yes' : 'No',
+                          ),
+                          const SizedBox(height: 10),
+                          _buildDetailRow(
+                            '📅 Timestamp:',
+                            scanRecord.timestamp?.toLocal().toString() ?? 'N/A',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                _buildDetailRow(
-                  '📈 Recycling Rate:',
-                  result.recyclingrate != null
-                      ? '${result.recyclingrate!.toStringAsFixed(1)}%'
-                      : 'N/A',
-                ),
-                _buildDetailRow(
-                  '🌿 Recycled Carbon Score:',
-                  result.recycledCarbonScore != null
-                      ? result.recycledCarbonScore!.toStringAsFixed(2)
-                      : 'N/A',
-                ),
-                _buildDetailRow(
-                  '🔥 Carbon Score (without recycling):',
-                  result.unrecycledCarbonScore != null
-                      ? result.unrecycledCarbonScore!.toStringAsFixed(2)
-                      : 'N/A',
-                ),
-                _buildDetailRow(
-                  '✅ Carbon Impact (Recycled):',
-                  result.carbonImpactRecycled ?? 'N/A',
-                ),
-                _buildDetailRow(
-                  '⚠️ Carbon Impact (Not recycled):',
-                  result.carbonImpactUnrecycled ?? 'N/A',
-                ),
-                _buildDetailRow(
-                  '🧩 Has Subtypes:',
-                  result.hasSubtypes ? 'Yes' : 'No',
-                ),
-                const SizedBox(height: 10),
-                _buildDetailRow(
-                  '📅 Timestamp:',
-                  scanRecord.timestamp?.toLocal().toString() ?? 'N/A',
-                ),
+
                 if (result.notes != null && result.notes!.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Text(
@@ -271,7 +294,8 @@ class ScanCard extends StatelessWidget {
                               color: Colors.greenAccent,
                             ),
                           ),
-                          Expanded(
+                          Flexible(
+                            fit: FlexFit.loose,
                             child: Text(
                               note,
                               style: const TextStyle(color: Colors.white70),
@@ -294,6 +318,8 @@ class ScanCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
+        mainAxisSize: MainAxisSize
+            .min, // Prevent infinite width error in horizontal scroll
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -304,7 +330,9 @@ class ScanCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 6),
-          Expanded(
+          Flexible(
+            // Use Flexible with loose fit, NOT Expanded
+            fit: FlexFit.loose,
             child: Text(
               value,
               style: const TextStyle(color: Colors.white70),

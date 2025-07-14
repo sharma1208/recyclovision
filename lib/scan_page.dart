@@ -9,6 +9,8 @@ import '../models/scan_record.dart';
 import 'scan_historypage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_scaffold.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class ScanPage extends StatefulWidget {
   final String imagePath;
@@ -22,20 +24,34 @@ class _ScanPageState extends State<ScanPage> {
   Map<String, dynamic>? scanResult; // Nullable because it starts empty
   bool isLoading = true; // Track loading state
   int recycledItemCount = 0;
-  Map<String, List<String>> subtypeOptions = {
-    "plastic": ["HDPE", "PET", "PP", "LDPE", "LLDPE", "PS", "PVC"],
-    "metal": ["aluminum cans", "aluminum ingot", "steel cans", "copper wire"],
-    "paper": [
-      "magazines/third-class mail",
-      "newspaper",
-      "office paper",
-      "phone books",
-      "textbooks",
-      "mixed paper (general)",
-      "mixed paper (primarily residential)",
-      "mixed paper (primarily from offices)",
-    ],
+  Map<String, Map<String, String>> subtypeOptions = {
+    "plastic": {
+      "HDPE": "HDPE",
+      "PET": "PET",
+      "PP": "PP",
+      "LDPE": "LDPE",
+      "LLDPE": "LLDPE",
+      "PS": "PS",
+      "PVC": "PVC",
+    },
+    "metal": {
+      "Aluminum Cans": "aluminum_cans",
+      "Aluminum Ingot": "aluminum_ingot",
+      "Steel Cans": "steel_cans",
+      "Copper Wire": "copper_wire",
+    },
+    "paper": {
+      "Magazines / Third-Class Mail": "magazines_third_class_mail",
+      "Newspaper": "newspaper",
+      "Office Paper": "office paper",
+      "Phone Books": "phone books",
+      "Textbooks": "textbooks",
+      "Mixed Paper (General)": "mixed paper general",
+      "Mixed Paper (Primarily Residential)": "mixed paper residential",
+      "Mixed Paper (Primarily from Offices)": "mixed paper office",
+    },
   };
+
   String? selectedSubtype;
 
   @override
@@ -214,19 +230,51 @@ class _ScanPageState extends State<ScanPage> {
       backgroundColor: Colors.black,
       body: SingleChildScrollView(
         child: isLoading
-            ? Center(
-                child: CircularProgressIndicator(),
-              ) // show spinner while loading
+            ? Center(child: CircularProgressIndicator())
             : scanResult == null
             ? Center(
                 child: Text(
                   'No data found.',
                   style: TextStyle(color: Colors.white70),
                 ),
-              ) // fallback if something went wrong
+              )
             : Column(
                 children: [
                   SizedBox(height: 5),
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 24.0, bottom: 4.0),
+                      child: RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'Misclassification? ',
+                              style: TextStyle(
+                                color: Colors.grey[400],
+                                fontSize: 12,
+                              ),
+                            ),
+                            WidgetSpan(
+                              child: GestureDetector(
+                                onTap: () =>
+                                    _showCorrectionDialog(context, scanResult!),
+                                child: Text(
+                                  'Report here',
+                                  style: TextStyle(
+                                    color: Colors.blueAccent,
+                                    fontSize: 12,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
                   Container(
                     margin: EdgeInsets.symmetric(horizontal: 24.0),
                     child: Card(
@@ -240,7 +288,6 @@ class _ScanPageState extends State<ScanPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            // 🧾 Title
                             Padding(
                               padding: EdgeInsets.symmetric(vertical: 12.0),
                               child: Text(
@@ -264,9 +311,9 @@ class _ScanPageState extends State<ScanPage> {
                                     )
                                   : Image.file(File(widget.imagePath)),
                             ),
-
                             SizedBox(height: 16),
 
+                            // Subtype dropdown with mapped values
                             if ((scanResult?['has_subtypes'] ?? false) &&
                                 scanResult?['material'] != null)
                               Padding(
@@ -305,25 +352,36 @@ class _ScanPageState extends State<ScanPage> {
                                         ),
                                         items:
                                             (subtypeOptions[scanResult!['material']
-                                                        .toString()
-                                                        .toLowerCase()] ??
+                                                            .toString()
+                                                            .toLowerCase()]
+                                                        ?.keys
+                                                        .toList() ??
                                                     [])
                                                 .map(
-                                                  (type) => DropdownMenuItem(
-                                                    value: type,
-                                                    child: Text(type),
+                                                  (pretty) => DropdownMenuItem(
+                                                    value: pretty,
+                                                    child: Text(pretty),
                                                   ),
                                                 )
                                                 .toList(),
                                         onChanged: (value) {
                                           if (value != null) {
-                                            setState(() {
-                                              selectedSubtype = value;
-                                            });
-                                            submitSubtype(
-                                              scanResult!['material'],
-                                              value,
-                                            );
+                                            final material =
+                                                scanResult!['material']
+                                                    .toString()
+                                                    .toLowerCase();
+                                            final subtypeKey =
+                                                subtypeOptions[material]?[value];
+
+                                            if (subtypeKey != null) {
+                                              setState(() {
+                                                selectedSubtype = value;
+                                              });
+                                              submitSubtype(
+                                                material,
+                                                subtypeKey,
+                                              );
+                                            }
                                           }
                                         },
                                       ),
@@ -347,30 +405,73 @@ class _ScanPageState extends State<ScanPage> {
                               'Recycling Rate',
                               '${(scanResult?['recycling_rate_percent'] is double) ? (scanResult!['recycling_rate_percent'] as double).toStringAsFixed(1) : scanResult?['recycling_rate_percent'] ?? '--'}%',
                             ),
-
                             SizedBox(height: 16),
-
                             sectionHeader("🌍 Carbon Impact:"),
-                            infoRow(
-                              Icons.cloud,
-                              Colors.lightBlueAccent,
-                              'Recycled Score',
-                              scanResult?['recycled_carbon_score'] != null
-                                  ? (scanResult!['recycled_carbon_score']
-                                            as double)
-                                        .toStringAsFixed(2)
-                                  : 'Unknown',
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.cloud,
+                                  color: Colors.lightBlueAccent,
+                                ),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: RichText(
+                                    text: TextSpan(
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.white,
+                                      ),
+                                      children: [
+                                        TextSpan(
+                                          text: 'Recycled Score: ',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text:
+                                              scanResult?['recycled_carbon_score'] !=
+                                                  null
+                                              ? '${(scanResult!['recycled_carbon_score'] as double).toStringAsFixed(2)} CO₂e/kg'
+                                              : 'Unknown',
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                if (scanResult?['recycled_carbon_score'] !=
+                                        null &&
+                                    (scanResult!['recycled_carbon_score']
+                                            as double) <
+                                        0)
+                                  Tooltip(
+                                    message:
+                                        'This value is negative because recycling avoids emissions compared to creating new materials.',
+                                    padding: EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[800],
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    textStyle: TextStyle(color: Colors.white),
+                                    child: Icon(
+                                      Icons.info_outline,
+                                      color: Colors.white60,
+                                      size: 18,
+                                    ),
+                                  ),
+                              ],
                             ),
+                            SizedBox(height: 10),
+
                             infoRow(
                               Icons.cloud_queue,
                               Colors.orangeAccent,
                               'Unrecycled Score',
                               scanResult?['unrecycled_carbon_score'] != null
-                                  ? (scanResult!['unrecycled_carbon_score']
-                                            as double)
-                                        .toStringAsFixed(2)
+                                  ? '${(scanResult!['unrecycled_carbon_score'] as double).toStringAsFixed(2)} CO₂e/kg'
                                   : 'Unknown',
                             ),
+
                             infoRow(
                               Icons.eco,
                               Colors.tealAccent,
@@ -385,11 +486,9 @@ class _ScanPageState extends State<ScanPage> {
                               scanResult?['carbon_impact_rating_unrecycled'] ??
                                   'Unknown',
                             ),
-
                             SizedBox(height: 16),
-
                             sectionHeader("📝 Notes:"),
-                            if (notes.isNotEmpty) ...[
+                            if (notes.isNotEmpty)
                               ...notes.map(
                                 (note) => Padding(
                                   padding: const EdgeInsets.only(
@@ -417,13 +516,12 @@ class _ScanPageState extends State<ScanPage> {
                                     ],
                                   ),
                                 ),
-                              ),
-                            ] else
+                              )
+                            else
                               Text(
                                 "No additional notes.",
                                 style: TextStyle(color: Colors.white38),
                               ),
-
                             if (scanResult?['recycled_carbon_score'] != null &&
                                 scanResult?['recycled_carbon_score'] !=
                                     'Unknown') ...[
@@ -451,7 +549,6 @@ class _ScanPageState extends State<ScanPage> {
                   ),
 
                   SizedBox(height: 16),
-
                   ElevatedButton(
                     onPressed: () {
                       Navigator.push(
@@ -473,7 +570,6 @@ class _ScanPageState extends State<ScanPage> {
                     ),
                     child: const Text('Scan History'),
                   ),
-
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Column(
@@ -511,6 +607,83 @@ class _ScanPageState extends State<ScanPage> {
         ],
       ),
     );
+  }
+
+  void _showCorrectionDialog(
+    BuildContext context,
+    Map<String, dynamic> scanResult,
+  ) {
+    String? selectedMaterial;
+    String? selectedSubtype;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Fix Misclassification'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(labelText: 'Correct Material'),
+                items: ['Plastic', 'Glass', 'Paper', 'Metal', 'Other']
+                    .map(
+                      (label) =>
+                          DropdownMenuItem(value: label, child: Text(label)),
+                    )
+                    .toList(),
+                onChanged: (value) => selectedMaterial = value,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                if (selectedMaterial != null) {
+                  _submitMisclassificationReport(scanResult, selectedMaterial!);
+                }
+              },
+              child: const Text('Submit'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _submitMisclassificationReport(
+    Map<String, dynamic> originalResult,
+    String correctedMaterial,
+  ) async {
+    final uri = Uri.parse('http://192.168.1.21:5001/report_misclassification');
+
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'original': {
+          ...originalResult,
+          'image_path': widget.imagePath, // Add this here
+        },
+        'corrected_material': correctedMaterial,
+        'timestamp': DateTime.now().toIso8601String(),
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Thanks! Report submitted.')),
+      );
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: ${response.body}')));
+    }
   }
 }
 
